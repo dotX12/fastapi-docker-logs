@@ -25,15 +25,15 @@ async def get_all_logs_from_container(
 
 
 @docker_router.get(
-    "/containers/{container_id}/logs",
+    "/containers/{container}/logs",
     summary="Get all logs from container",
     response_class=PlainTextResponse
 )
 async def get_all_logs_from_container(
-    container_id: str,
+    container: str,
     docker_utils: DockerUtils = Depends(DockerUtilsDependencyMarker),
 ):
-    return docker_utils.get_logs(container_id=container_id)
+    return docker_utils.get_logs(container_id=container)
 
 
 @docker_router.post(
