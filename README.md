@@ -10,6 +10,10 @@
 ![image](https://user-images.githubusercontent.com/64792903/159360978-3dc803cb-16ee-4d00-bbba-21d9a3119f07.png)
 
 
+### Example CI/CD
+https://github.com/dotX12/fastapi-docker-logs/blob/master/ci_cd.yml
+
+
 ### How to use in docker?
 Example in CI/CD
 
