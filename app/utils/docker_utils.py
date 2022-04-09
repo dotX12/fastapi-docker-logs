@@ -1,20 +1,24 @@
 from typing import List
+from aiodocker.containers import DockerContainer
+from aiodocker import Docker
 
-from docker import DockerClient
-from docker.models.resource import Model as DockerModel
 
-
-class DockerUtils:
-    def __init__(self, client: DockerClient):
+class AioDockerUtils:
+    def __init__(self, client: Docker):
         self.client = client
 
-    def get_containers(self) -> List[DockerModel]:
-        return self.client.containers.list()
+    async def get_containers(self) -> List[DockerContainer]:
+        containers = await self.client.containers.list()
+        return [await container.show() for container in containers]
 
-    def get_logs(self, container_id: str) -> str:
-        container = self.client.containers.get(container_id=container_id)
-        return container.logs()
+    async def get_logs(self, container_id: str) -> List[str]:
+        container = await self.client.containers.get(container=container_id)
+        return await container.log(stdout=True, stderr=True)
 
-    def reload_container(self, container_id: str) -> None:
-        container = self.client.containers.get(container_id=container_id)
-        container.reload()
+    async def get_stats(self, container_id: str) -> List[str]:
+        container = await self.client.containers.get(container=container_id)
+        return await container.stats(stream=False)
+
+    async def reload_container(self, container_id: str) -> None:
+        container = await self.client.containers.get(container=container_id)
+        await container.restart()

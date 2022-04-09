@@ -44,4 +44,4 @@ class ContainerArgs(BaseModelORM):
 
 
 class ContainerModel(BaseModelORM):
-    attrs: ContainerArgs
+    __root__: ContainerArgs

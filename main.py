@@ -1,12 +1,12 @@
-import docker
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.binding import own_router_v1
-from app.utils.dependencies import DockerUtilsDependencyMarker
-from app.utils.docker_utils import DockerUtils
-from config import SettingsDependencyMarker, Settings
+from app.exceptions import UnexpectedDockerError
+from app.handlers.exceptions import handle_docker_exception
+from config import Settings
+from config import SettingsDependencyMarker
 
 
 def get_application() -> FastAPI:
@@ -32,13 +32,13 @@ def get_application() -> FastAPI:
     application.include_router(own_router_v1)
     application.dependency_overrides.update(
         {
-            DockerUtilsDependencyMarker: lambda: DockerUtils(
-                client=docker.from_env(),
-            ),
             SettingsDependencyMarker: lambda: Settings()
         }
     )
-
+    application.add_exception_handler(
+        UnexpectedDockerError,
+        handle_docker_exception
+    )
     return application
 
 

@@ -7,8 +7,8 @@ from starlette.responses import PlainTextResponse
 
 from app.schemas.container import ContainerModel
 from app.security.context import get_current_username
-from app.utils.dependencies import DockerUtilsDependencyMarker
-from app.utils.docker_utils import DockerUtils
+from app.utils.dependencies import AioDockerDependency
+from app.utils.docker_utils import AioDockerUtils
 
 docker_router = APIRouter(dependencies=[Depends(get_current_username)])
 
@@ -19,9 +19,9 @@ docker_router = APIRouter(dependencies=[Depends(get_current_username)])
     response_model=List[ContainerModel],
 )
 async def get_all_logs_from_container(
-    docker_utils: DockerUtils = Depends(DockerUtilsDependencyMarker),
+    dof: AioDockerUtils = Depends(AioDockerDependency()),
 ):
-    return docker_utils.get_containers()
+    return await dof.get_containers()
 
 
 @docker_router.get(
@@ -31,9 +31,22 @@ async def get_all_logs_from_container(
 )
 async def get_all_logs_from_container(
     container: str,
-    docker_utils: DockerUtils = Depends(DockerUtilsDependencyMarker),
+    docker_utils: AioDockerUtils = Depends(AioDockerDependency()),
 ):
-    return docker_utils.get_logs(container_id=container)
+    data = await docker_utils.get_logs(container_id=container)
+    return "".join(data)
+
+
+@docker_router.get(
+    "/containers/{container}/stats",
+    summary="Get all logs from container",
+    response_class=JSONResponse
+)
+async def get_all_logs_from_container(
+    container: str,
+    docker_utils: AioDockerUtils = Depends(AioDockerDependency()),
+):
+    return await docker_utils.get_stats(container_id=container)
 
 
 @docker_router.post(
@@ -43,7 +56,7 @@ async def get_all_logs_from_container(
 )
 async def reload_container(
     container_id: str,
-    docker_utils: DockerUtils = Depends(DockerUtilsDependencyMarker),
+    docker_utils: AioDockerUtils = Depends(AioDockerDependency()),
 ):
-    docker_utils.reload_container(container_id=container_id)
+    await docker_utils.reload_container(container_id=container_id)
     return JSONResponse(status_code=201, content={"detail": "Task created"})
