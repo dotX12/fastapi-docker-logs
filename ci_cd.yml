@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  REGISTRY: "ghcr.io/<github_name_or_github_company_name>"  # REPLACE
+  IMAGE_NAME: "<custom_name>"  # REPLACE
+  CONTAINER_NAME: "<custom_name>" # REPLACE
+
+jobs:
+          
+  build_and_push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+    
+      - name: Checkout master
+        uses: actions/checkout@v2
+
+      - name: Build container image
+        run: docker build -t $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7) .
+
+      - name: Install doctl
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.COMPANY_OWNER }}  # Github name
+          password: ${{ secrets.PACKAGES_SECRET }}  # Github access token https://github.com/settings/tokens
+          
+      - name: Push image to DigitalOcean Container Registry
+        run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs: build_and_push
+
+    steps:
+      - name: Deploy to Digital Ocean droplet via SSH action
+        uses: appleboy/ssh-action@v0.1.3
+        with:
+          host: ${{ secrets.DEV_IP_SERVER }}  # Secret IP Server
+          username: ${{ secrets.DEV_SERVER_LOGIN }}  # Secret IP Login
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}  # Secret IP Password
+          port: ${{ secrets.DEV_SERVER_PORT }}  # Secret IP Port 
+          envs: IMAGE_NAME,REGISTRY,GITHUB_SHA,CONTAINER_NAME,IMAGE_NAME
+          script: |
+            # Login into ghcr in Server...
+            echo ${{ secrets.PACKAGES_SECRET }} | docker login ghcr.io -u ${{ secrets.COMPANY_OWNER }} --password-stdin
+            # Stop running container
+            docker stop $(echo $CONTAINER_NAME)
+            # Remove old container
+            docker rm $(echo $CONTAINER_NAME)
+            # Run a new container from a new image
+            docker run -d --network host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -e BASIC_AUTH_USERNAME=${{ secrets.BASIC_AUTH_USERNAME }} \
+            -e BASIC_AUTH_PASSWORD=${{ secrets.BASIC_AUTH_PASSWORD }} \
+            --name $(echo $IMAGE_NAME) \
+            -p 4243:80 \
+            --restart always \
+            $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
